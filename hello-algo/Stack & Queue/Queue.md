@@ -1,298 +1,305 @@
 ---
 tags:
-  - chapter/stack-queue
-status: taught
-date: 2026-08-07
+  - chapter/stack-and-queue
+status: done
+date: 2026-08-10
 ---
 
 # Queue
 
 ## Core idea
-A **queue** is a linear data structure that follows the **First In, First Out
-(FIFO)** rule — the mirror image of [[Stack]]'s LIFO. The book's own analogy is a
-real-world line of people waiting: newcomers keep joining at the back, while the
-person who's been waiting longest (at the front) leaves first. Whatever went in
-*first* comes out *first* — unlike a stack, there's no reversal here; the original
-order is preserved all the way through.
+A **queue** is a linear data structure that follows the **first-in, first-out
+(FIFO)** rule — the opposite of the [[Stack]]'s LIFO rule. It models people lining
+up: newcomers join the **rear**, and the person at the **front** leaves first.
+Whoever got in line first, leaves first.
 
-The end where elements leave is the **front**; the end where new elements join is the
-**rear**. Adding an element at the rear is **push** (also called enqueue); removing
-the front element is **pop** (dequeue).
+The operation that adds an element at the rear is called **push** (enqueue); the
+operation that removes the element at the front is called **pop** (dequeue); reading
+the front element without removing it is **peek**.
 
-### Worked trace of push/pop
+Diagram: **`queue_operations.png`** — starts with queue `[1, 3, 2]` (front to rear —
+`1` is at front, `2` is at rear). `push(5)` adds 5 at the rear, `push(4)` adds 4 at
+the rear (front-to-rear now reads `1, 3, 2, 5, 4`). Then two `pop()` calls remove
+`1`, then `3` — always from the **front**, in the order they were originally added.
 
-Diagram: **`queue_operations.png`** traces a queue starting as `[1, 3, 2]`
-(front to rear, front listed first) through four operations:
+Compare against the [[Stack]] diagram: same push sequence of numbers, but the pop
+order is opposite. Stack popped `4` then `5` (LIFO — last added, first out). Queue
+pops `1` then `3` (FIFO — first added, first out). That contrast is the entire
+distinction between the two structures.
 
-1. `push(5)` → `[1, 3, 2, 5]` — `5` joins at the **rear**.
-2. `push(4)` → `[1, 3, 2, 5, 4]` — `4` joins at the rear, behind `5`.
-3. `pop()` → returns `1`, queue becomes `[3, 2, 5, 4]` — the element that has been
-   waiting *longest* (`1`, sitting at the front) is the one that leaves.
-4. `pop()` → returns `3`, queue becomes `[2, 5, 4]`.
+## Worked trace of the built-in queue
 
-It's worth directly contrasting this with [[Stack]]'s equivalent trace: there,
-`pop()` returned `4` then `5` — most-recently-pushed first, a *reversed* order.
-Here, `pop()` returns `1` then `3` — the *same* order they were originally pushed
-in, fully preserved. Same push sequence in both cases; opposite retrieval order.
-That contrast is the entire practical difference between a stack and a queue.
+From [queue.cpp](../codes/cpp/chapter_stack_and_queue/queue.cpp), using C++'s
+built-in `std::queue`:
 
-### Common operations — all O(1)
-
-| Method | Description | Time Complexity |
-|---|---|---|
-| `push()` | Enqueue — add an element at the rear | O(1) |
-| `pop()` | Dequeue — remove the front element | O(1) |
-| `peek()` / `front()` | Read the front element without removing it | O(1) |
-
-C++ usage, [queue.cpp:9-38](../en/codes/cpp/chapter_stack_and_queue/queue.cpp):
 ```cpp
 queue<int> queue;
+queue.push(1);   // queue (front→rear): [1]
+queue.push(3);   // [1, 3]
+queue.push(2);   // [1, 3, 2]
+queue.push(5);   // [1, 3, 2, 5]
+queue.push(4);   // [1, 3, 2, 5, 4]
 
-queue.push(1);   // Enqueue elements
-queue.push(3);
-queue.push(2);
-queue.push(5);
-queue.push(4);
-// queue is now (front to rear): [1, 3, 2, 5, 4]
+int front = queue.front();   // front = 1 (reads only, does not remove)
 
-int front = queue.front();   // Access front element -> 1 (does NOT remove it)
+queue.pop();      // removes 1 (the FRONT, not the rear). queue is now [3, 2, 5, 4].
 
-queue.pop();                  // Dequeue front element -> queue becomes [3, 2, 5, 4]
-
-int size = queue.size();      // Get queue length -> 4
-bool empty = queue.empty();   // Check if empty -> false
+int size = queue.size();     // size = 4
+bool empty = queue.empty();  // empty = false
 ```
-Notice the insertion method is named `push()` on **both** `std::stack` and
-`std::queue` — same method name, different meaning underneath (stack: add at top;
-queue: add at rear). That's fine because each structure only ever has exactly one
-insertion point, so the name doesn't need to specify *where*.
 
-## Linked list implementation — worked trace
+Same asymmetry as `std::stack`: `queue.pop()` in C++ has **no return value**. To get
+the dequeued value, read it with `front()` first, then call `pop()` to remove it —
+mirrors the `stack.top()` then `stack.pop()` pattern from [[Stack]].
 
-Just like [[Stack]], a queue can be built on top of a linked list — but this time
-**two** pointers are needed instead of one, because push and pop happen at
-*opposite* ends of the list: the **head node is the front**, the **tail node is the
-rear**.
+| Method | Description | Time complexity |
+|---|---|---|
+| `push()` | enqueue — add element at rear | O(1) |
+| `pop()` | dequeue — remove front element | O(1) |
+| `front()` / `peek()` | read front element without removing | O(1) |
 
-Diagram: **`linkedlist_queue_step1.png`** — starting state: a queue drawn as a
-vertical box `[1, 3, 2, 5]` (front to rear) next to its actual linked-list form:
-`Head node 1 → 3 → 2 → 5 Tail node`. Head = front, tail = rear.
+## Building a queue from scratch
 
-Diagram: **`linkedlist_queue_step2_push.png`** — pushing `4`. Caption: "Push node
-`4` to the tail of the linked list." After the push: `Head node 1 → 3 → 2 → 5 → 4
-Tail node` — `4` becomes the new tail.
+Same restriction idea as the stack: implement a queue by limiting an array or a
+linked list to only add at one end and remove at the other — except unlike the
+stack, insertion and removal happen at **opposite** ends, not the same end.
 
-Diagram: **`linkedlist_queue_step3_pop.png`** — popping. Caption: "Remove the head
-node." Starting from `1 → 3 → 2 → 5 → 4`, popping removes node `1`, leaving
-`3 → 2 → 5 → 4` as the remaining chain — `3` is now the front.
+### Implementation 1 — backed by a linked list
 
-This is a genuine asymmetry worth calling out compared to [[Stack]]'s linked-list
-implementation: a stack does **head**-insertion *and* **head**-removal — both
-operations touch the same end. A queue instead does **tail**-insertion,
-**head**-removal — it needs to reach *both* ends of the list.
+Idea: use the **head node as the front**, and the **tail node as the rear**.
+Enqueue inserts a node at the tail; dequeue removes the head node.
 
-C++ code, [linkedlist_queue.cpp:10-71](../en/codes/cpp/chapter_stack_and_queue/linkedlist_queue.cpp):
+Diagram: **`linkedlist_queue_step2_push.png`** — shows `push(4)`. On the right, the
+linked-list structure before the push: head is `1`, chain `1 → 3 → 2 → 5`, tail is
+`5`. After `push(4)`, a new node `4` is appended after the old tail `5`
+(`5->next = 4`), and `4` becomes the new tail. This differs from the stack's
+linked-list push, which inserts at the **head** — the queue must insert at the
+**tail**, since enqueue adds to the rear, not the front.
+
+Code, [linkedlist_queue.cpp](../codes/cpp/chapter_stack_and_queue/linkedlist_queue.cpp):
+
 ```cpp
 class LinkedListQueue {
   private:
-    ListNode *front, *rear;  // head node = front, tail node = rear
+    ListNode *front, *rear;   // head node = front, tail node = rear
     int queSize;
 
   public:
+    /* enqueue */
     void push(int num) {
         ListNode *node = new ListNode(num);
-        if (front == nullptr) {   // empty queue: no existing rear to attach to
-            front = node;          // the new node must become BOTH front and rear
+        if (front == nullptr) {          // empty queue: both point to the new node
+            front = node;
             rear = node;
-        } else {                   // non-empty: attach after the current rear
+        } else {                          // non-empty: append after the current tail
             rear->next = node;
             rear = node;
         }
         queSize++;
     }
 
+    /* dequeue */
     int pop() {
         int num = peek();
         ListNode *tmp = front;
-        front = front->next;   // advance front pointer to the next node
+        front = front->next;   // front moves to the second node
         delete tmp;
         queSize--;
         return num;
     }
 
+    /* peek */
     int peek() {
-        if (size() == 0) throw out_of_range("Queue is empty");
+        if (size() == 0) throw out_of_range("queue is empty");
         return front->val;
     }
 };
 ```
-Trace why `push()` needs that empty-check branch, something [[Stack]]'s `push()`
-never needed: when the queue is empty, `rear` is `nullptr` — there is no existing
-node to set `rear->next` on. So the very first pushed node has to become **both**
-`front` and `rear` at once. From the second push onward, the simpler branch takes
-over: link the new node after the current `rear`, then move `rear` to point at it.
-`pop()`, by contrast, only ever touches `front` — the same head-removal pattern
-already seen in [[Stack]].
 
-## Array implementation — the clever bit
+Worked trace with `1, 3, 2, 5, 4`:
 
-A naive array implementation would dequeue by deleting index 0 — but per [[Array]],
-removing index 0 requires shifting every remaining element one slot left, an O(n)
-cost paid on **every single dequeue**. That would defeat the entire point of a queue
-being cheap to operate on.
+1. `push(1)`: queue empty, so `front = rear = node(1)`. Chain: `1`.
+2. `push(3)`: not empty, `rear->next = node(3)`, `rear = node(3)`. Chain: `1 → 3`.
+3. `push(2)`: chain becomes `1 → 3 → 2`.
+4. `push(5)`: chain becomes `1 → 3 → 2 → 5`.
+5. `push(4)`: chain becomes `1 → 3 → 2 → 5 → 4`.
+6. `pop()`: reads `peek() = front->val = 1`, sets `front = front->next = node(3)`,
+   deletes the old node holding `1`. Chain is now `3 → 2 → 5 → 4`. Returns `1`.
 
-The fix used here: **don't shift anything at all — just move a pointer.** Keep a
-variable `front` that tracks the *index* of the current front element (instead of
-always assuming it's sitting at index 0), and a variable `size` tracking how many
-elements are currently stored. From these two, `rear = front + size` gives the index
-one slot past the last real element. The valid data always lives in the index range
-`[front, rear - 1]`.
+Both enqueue (touches only the tail) and dequeue (touches only the head) are O(1) —
+no traversal either way, because the class tracks *both* a `front` and a `rear`
+pointer. This is the key structural difference from the stack's linked-list
+implementation, which only needed one tracked end (head doubled as both insertion
+and removal point). A queue needs two tracked ends since insertion and removal
+happen at opposite sides.
 
-Diagram: **`array_queue_step1.png`** — setup: the array holds `[1, 3, 2, 5]` in
-consecutive slots, `front` points at the index of value `1`, and the diagram states
-the defining relationship directly: **`rear = front + size`**. With `size = 4` here,
-`rear` points exactly one slot past `5`.
+### Implementation 2 — backed by a circular array
 
-Diagram: **`array_queue_step2_push.png`** — `push(4)`. The caption spells out the
-3-step recipe precisely:
-1. Update the variable `rear`.
-2. Write the new element at the `rear` index.
-3. Increase `size` by 1.
+More subtle than the stack's array implementation.
 
-After this: `4` gets written at the old `rear` slot, `size` becomes `5`, and `rear`
-advances one further slot.
+**Why the naive approach fails.** A plain array with `push_back` for enqueue would
+need dequeue to remove the *first* element — but removing index 0 requires shifting
+every remaining element left by one slot, O(n). That defeats O(1) operations.
 
-Diagram: **`array_queue_step3_pop.png`** — `pop()`. Caption: **1. Increase `front`
-by 1. 2. Decrease `size` by 1.** That is the *entire* operation. The old front
-element (value `1`) is not erased and nothing is shifted — it's simply left sitting
-in its memory slot, now permanently outside the `[front, rear-1]` valid range, so
-it's logically gone even though its bytes are untouched. Compare this with [[List]]'s
-array deletion, which required an actual O(n) shift — this queue design sidesteps
-that entirely by redefining what counts as "valid" instead of physically moving data.
+**The clever fix.** Track two variables instead of physically shifting elements:
+- `front` — index of the current front element
+- `size` — element count (so `rear = front + size` is the index just past the last
+  element)
 
-### The wraparound problem — worked trace
+The elements currently in the queue occupy index range `[front, front + size - 1]`.
+Enqueue writes the new element at index `front + size` and increments `size`.
+Dequeue doesn't move any data — it just increments `front` and decrements `size`,
+leaving the old front slot untouched (it's simply no longer considered part of the
+queue).
 
-As pushes and pops keep happening, both `front` and `rear` keep creeping rightward
-through the array. Eventually `rear` would run off the *physical* end of the array —
-even though there might be plenty of *logically* free space sitting at the
-beginning, freed up by earlier pops. The fix: treat the array as **circular**. When
-`front` or `rear` would step past the last valid index, wrap back around to index
-`0` instead. This wraparound is implemented with the **modulo operator**.
+**The problem this creates.** As enqueue/dequeue keep happening, `front` keeps
+creeping rightward and eventually runs off the end of the fixed-size array — even
+though there may be unused space at the *beginning* of the array (from earlier
+dequeues). Diagram: **`array_queue_step2_push.png`** — `push(4)`: `front` sits at
+index 1 (value `1`), `rear` computed as `front + size = 1 + 5 = 6`, so `4` is written
+at index 6, `size` becomes 6. Diagram: **`array_queue_step3_pop.png`** — the
+following `pop()`: `front` increments from 1 to 2, `size` decrements from 5 to 4 —
+value `1` is still physically in the array at index 1, but the queue no longer
+considers it part of the valid range.
 
-C++ code, [array_queue.cpp:44-65](../en/codes/cpp/chapter_stack_and_queue/array_queue.cpp):
+**The circular fix.** Treat the array as **circular** — conceptually joining head
+and tail into a loop — so when an index would run past the last slot, it wraps back
+to index 0. Implemented with the modulo operator (`%`).
+
+Code, [array_queue.cpp](../codes/cpp/chapter_stack_and_queue/array_queue.cpp):
+
 ```cpp
-void push(int num) {
-    if (queSize == queCapacity) { /* full, refuse */ return; }
-    // rear = (front + size) % capacity -- the modulo makes rear wrap around
-    int rear = (front + queSize) % queCapacity;
-    nums[rear] = num;
-    queSize++;
-}
+class ArrayQueue {
+  private:
+    int *nums;        // fixed-size backing array
+    int front;          // index of the front element
+    int queSize;        // current number of elements
+    int queCapacity;    // total array capacity
 
-int pop() {
-    int num = peek();
-    // front advances by 1, wrapping back to 0 if it runs past the last index
-    front = (front + 1) % queCapacity;
-    queSize--;
-    return num;
-}
+  public:
+    /* enqueue */
+    void push(int num) {
+        if (queSize == queCapacity) {
+            cout << "Queue is full" << endl;
+            return;
+        }
+        int rear = (front + queSize) % queCapacity;   // wrap around via modulo
+        nums[rear] = num;
+        queSize++;
+    }
+
+    /* dequeue */
+    int pop() {
+        int num = peek();
+        front = (front + 1) % queCapacity;   // front wraps around too
+        queSize--;
+        return num;
+    }
+
+    /* peek */
+    int peek() {
+        if (isEmpty()) throw out_of_range("queue is empty");
+        return nums[front];
+    }
+};
 ```
 
-**Worked trace of the wraparound itself**, using `queCapacity = 10`: suppose after a
-series of prior pushes/pops the queue currently has `front = 8` and `queSize = 3`
-(meaning it occupies logical slots `8, 9, 0` — it has already wrapped once before).
-Now call `push(99)`:
+Worked trace of the wraparound — matches the driver code's "test circular array"
+loop in [array_queue.cpp](../codes/cpp/chapter_stack_and_queue/array_queue.cpp)
+(lines 118–123). Say `queCapacity = 10` and after the initial pushes/pop above,
+`front = 1`, `queSize = 4` (contents `3, 2, 5, 4` at indices 1–4). Now
+`push(i); pop();` repeatedly for `i = 0..9`:
 
-```
-rear = (front + queSize) % queCapacity
-     = (8 + 3) % 10
-     = 11 % 10
-     = 1
-```
+- First round (`i=0`): `rear = (1 + 4) % 10 = 5`, so `0` is written at index 5,
+  `size` becomes 5. Then `pop()`: `front = (1+1) % 10 = 2`, `size` becomes 4.
+- Repeat: each round, `front` and `rear` creep further right through indices 5, 6,
+  7, 8, 9...
+- Eventually `rear` computes to something like `(8 + 4) % 10 = 2` — **wrapped past
+  index 9 straight back to index 2**. Without the modulo, `rear` would compute to
+  `12`, out of bounds for a 10-slot array. The modulo is exactly what turns the flat
+  array into a logically circular one, letting `front` and `rear` cycle through the
+  same fixed block of memory indefinitely instead of running off the end.
 
-The new element gets written at **physical index `1`** — not index `11`, which
-doesn't even exist in a 10-slot array. Without the modulo operation, this would be
-an out-of-bounds write past the end of the array. With it, the array behaves exactly
-as if index `9` is immediately followed by index `0` again — the same wraparound
-logic as a clock face going from `12` straight back to `1`. This exact scenario is
-what the `array_queue.cpp` driver code's "circular array test" loop exercises: it
-runs 10 rounds of push-then-pop specifically to force `front` and `rear` all the way
-around the array at least once, confirming the wraparound logic holds.
+This circular-array queue still has one limitation vs. the array-backed stack: its
+capacity is fixed at construction time (`ArrayQueue(int capacity)` in the
+constructor) — it doesn't automatically grow like `std::vector`. The fix would be to
+replace the fixed array with a dynamic array plus a resize/re-index step when full;
+the example code leaves that as an exercise since the mechanics mirror the stack's
+dynamic-array approach.
 
-**A remaining limitation, noted but not built in this repo**: this circular-array
-queue still has a *fixed* total capacity — `push()` simply refuses (and prints an
-error) once the array is full. The source doc points out this could be fixed the
-same way [[List]] fixed a plain array's fixed-length problem: swap the fixed array
-for a dynamic array with an expansion mechanism. That combination isn't actually
-implemented anywhere in this repo's code, so there's no worked trace for it here —
-just the explicit conceptual link back to what [[List]] already covered.
+## Comparison of the two implementations
 
-## Comparing the two implementations
-
-The source doc states this comparison reaches **the same conclusion as [[Stack]]'s**
-comparison, so it isn't repeated from scratch — but stated concretely for queues:
-array-based queues get better cache locality (contiguous memory, same reasoning as
-[[Array]]) at the cost of a capacity that's either fixed outright, or occasionally
-pays an O(n) expansion cost if backed by a dynamic array (per [[List]]).
-Linked-list-based queues have more *consistent* per-operation cost and grow with no
-capacity ceiling at all, at the cost of per-node pointer memory overhead (per
-[[Linked List]]) and an allocation on every single push.
-
-## Typical applications
-
-- **Order processing systems** — the source doc's own example is e-commerce orders:
-  as shoppers place orders, each one is added to a queue, and the system processes
-  orders strictly in that same arrival order. This is exactly "first come, first
-  served," and is precisely why systems facing a burst of simultaneous orders (a big
-  sale event, for instance) rely on a queue rather than a stack — processing orders
-  out of arrival sequence would be unfair or simply wrong in that context.
-- **To-do task queues** — a printer's print queue, or a restaurant's order queue: any
-  situation that needs "first come, first served" behavior maps directly onto a
-  queue's FIFO contract.
+The same conclusions from comparing the stack's two implementations apply here:
+array-backed tends to be faster on average (cache locality) but the circular-array
+queue additionally has a fixed capacity unless resizing is added; linked-list-backed
+has more consistent O(1) performance per-operation but higher per-node overhead. The
+trade-off logic is identical to [[Stack]], just applied to a structure where
+insertion happens at one end and removal at the other, instead of both at the same
+end.
 
 ## Complexity
 
-| Operation | Complexity | Why |
+| Operation | Array-backed (circular) | Linked-list-backed |
 |---|---|---|
-| `push()` | O(1) | Array: write at `rear` index + advance pointer. Linked list: attach after tail + move tail pointer |
-| `pop()` | O(1) | Array: advance `front` index (no shift). Linked list: advance head pointer, free old head |
-| `peek()` / `front()` | O(1) | Direct read of the front slot/node, no traversal |
+| push (enqueue) | O(1), capacity-limited unless resized | O(1) |
+| pop (dequeue) | O(1) | O(1) |
+| peek | O(1) | O(1) |
 
 ## Code
-- [queue.cpp](../en/codes/cpp/chapter_stack_and_queue/queue.cpp) — `std::queue<int>`
-  usage: push, front, pop, size, empty.
-- [linkedlist_queue.cpp](../en/codes/cpp/chapter_stack_and_queue/linkedlist_queue.cpp) —
-  hand-rolled `LinkedListQueue` class, tail-insertion push / head-removal pop, using
-  separate `front` and `rear` pointers.
-- [array_queue.cpp](../en/codes/cpp/chapter_stack_and_queue/array_queue.cpp) —
-  hand-rolled `ArrayQueue` class implementing a **circular array** via the modulo
-  operator, including a driver-code test loop that exercises the wraparound.
+- [queue.cpp](../codes/cpp/chapter_stack_and_queue/queue.cpp) — `std::queue` usage,
+  push/front/pop/size/empty, all exercised in `main()`.
+- [linkedlist_queue.cpp](../codes/cpp/chapter_stack_and_queue/linkedlist_queue.cpp) —
+  `LinkedListQueue` class, tail-insertion enqueue / head-removal dequeue.
+- [array_queue.cpp](../codes/cpp/chapter_stack_and_queue/array_queue.cpp) —
+  `ArrayQueue` class, circular-array enqueue/dequeue via modulo, including a
+  wraparound demonstration loop in `main()`.
 
 Diagrams (from `en/docs/chapter_stack_and_queue/queue.assets/`):
-- `queue_operations.png` — push(5), push(4), pop(), pop() traced on `[1,3,2]`,
-  showing FIFO order preserved (contrast with [[Stack]]'s reversed order)
-- `linkedlist_queue_step1.png` — array-view vs. linked-list-view of the same queue,
-  head = front, tail = rear
-- `linkedlist_queue_step2_push.png` — push(4) becomes the new tail node
-- `linkedlist_queue_step3_pop.png` — pop() removes the head node
-- `array_queue_step1.png` — the `rear = front + size` relationship
-- `array_queue_step2_push.png` — the 3-step push recipe (update rear, write, size++)
-- `array_queue_step3_pop.png` — the 2-step pop recipe (front++, size--)
+- `queue_operations.png` — push/pop sequence on a queue, FIFO visualized
+- `linkedlist_queue_step1.png`, `linkedlist_queue_step2_push.png`,
+  `linkedlist_queue_step3_pop.png` — linked-list-backed queue, push and pop traced
+  against the actual pointer structure (front = head, rear = tail)
+- `array_queue_step1.png`, `array_queue_step2_push.png`,
+  `array_queue_step3_pop.png` — array-backed queue, push and pop traced against
+  `front`/`rear`/`size` index bookkeeping
 
 ## Related
-- [[Array]]
-- [[Linked List]]
-- [[List]]
-- [[Stack]]
+- [[Stack]] — same restricted-array/restricted-linked-list construction idea,
+  opposite LIFO vs. FIFO ordering, same amortized-O(1)-vs-consistent-O(1) trade-off
+  discussion
+- [[Linked List]] — tail-insertion technique used by the linked-list-backed queue
+
+### Typical applications
+- **Order processing systems** (e.g. e-commerce checkouts). Orders are added to a
+  queue as customers place them; the system processes them in arrival order — first
+  come, first served. A burst of orders in a short window (e.g. a big sales event)
+  is exactly the high-concurrency scenario that makes queue-based processing
+  performance a real engineering concern.
+- **Task queues / to-do processing** — any "first come, first served" scenario, such
+  as a printer's print queue or a restaurant's order queue, is naturally modeled by
+  a queue.
 
 ## Self-check questions
-1. Given the same push sequence `push(5)` then `push(4)` on `[1, 3, 2]`, why does
-   `pop()` return `1` then `3` for a queue, but `4` then `5` for a stack?
-2. Why does `LinkedListQueue::push()` need a special empty-queue branch that
-   `LinkedListStack::push()` never needed?
-3. Why is `rear` tracked as a separate variable (`front + size`) rather than the
-   queue always assuming its front sits at index 0?
-4. Trace the wraparound: with `queCapacity = 10`, `front = 8`, `queSize = 3`, what
-   physical array index does the next `push()` write to, and why?
-5. What real limitation does this circular-array `ArrayQueue` still have, and which
-   earlier concept from [[List]] would fix it?
+1. Given the push sequence `push(1), push(3), push(2)`, what does a stack's `pop()`
+   return first, and what does a queue's `pop()` return first? Why do they differ?
+2. Why does the linked-list-backed queue need to track **two** pointers (`front` and
+   `rear`) while the linked-list-backed stack only needs one?
+3. In the circular-array queue, why is `rear` computed as `(front + size) % capacity`
+   instead of just tracking a separate `rear` variable directly?
+4. Trace: `queCapacity = 5`, `front = 3`, `queSize = 2` (so occupied indices are 3
+   and 4). What index does the next `push()` write to? What happens to `front` after
+   the following `pop()`?
+5. Why would a plain (non-circular) array-backed queue eventually stop working even
+   if the total number of elements never exceeds its capacity?
+
+## Chapter 5 Quiz Results
+
+**Date**: 2026-08-10 | **Score**: 4/7 | **Status**: passed
+
+**Questions answered correctly (queue-related):**
+- Q2 ✅ Circular-array queue with capacity=6, front=4, queSize=3 — occupied indices are 4, 5, 0 (wraps around via modulo)
+
+**Questions missed (queue-related):**
+- None specific to queue — all queue questions answered correctly
+
+See [[Stack]] for full quiz breakdown and [[Deque]] for missed-question details.
