@@ -1,303 +1,379 @@
 ---
 tags:
-  - chapter/stack-queue
-status: taught
-date: 2026-08-07
+  - chapter/stack-and-queue
+status: done
+date: 2026-08-10
 ---
 
-# Deque
+# Deque (Double-ended Queue)
 
 ## Core idea
-A **deque** (pronounced "deck," short for double-ended queue) removes the one-directional
-restriction both [[Stack]] and [[Queue]] impose. A stack only ever touches one end (the
-top). A queue can push at one end (the rear) and pop only at the other (the front), but
-never the reverse. A deque lifts both restrictions at once: elements can be pushed *and*
-popped at **either** end.
+A **deque** (double-ended queue, pronounced "deck") is a linear data structure
+that generalizes both the [[Stack]] and the [[Queue]]. A regular queue only
+allows adding at the rear and removing from the front. A regular stack only
+allows both operations at the same end (the top). A deque allows **adding and
+removing at both ends** — front *and* rear.
 
-That gives six operations instead of a stack/queue's three:
+Diagram: **`deque_operations.png`** — starts with deque `[3, 2, 5]`
+(front-to-rear). Four operations are shown: `push_last(4)` adds `4` to the
+rear, `push_first(1)` adds `1` to the front, `pop_last()` removes from the
+rear, and `pop_first()` removes from the front. Every end is open for both
+insertion and removal.
 
-| Method | Description | Time Complexity |
+This means a deque can serve as a stack (use only one end), a queue (add at one
+end, remove from the other), or something more flexible than either.
+
+| Method | Description | Time complexity |
 |---|---|---|
-| `push_first()` | Add an element at the front | O(1) |
-| `push_last()` | Add an element at the rear | O(1) |
-| `pop_first()` | Remove the front element | O(1) |
-| `pop_last()` | Remove the rear element | O(1) |
-| `peek_first()` | Read the front element without removing it | O(1) |
-| `peek_last()` | Read the rear element without removing it | O(1) |
+| `push_first()` | Add element to front | O(1) |
+| `push_last()` | Add element to rear | O(1) |
+| `pop_first()` | Remove front element | O(1) |
+| `pop_last()` | Remove rear element | O(1) |
+| `peek_first()` | Access front element | O(1) |
+| `peek_last()` | Access rear element | O(1) |
 
-Diagram: **`deque_operations.png`** — a deque `[3, 2, 5, 4]` (front to rear) with four
-arrows drawn at the two ends: `Pop first` / `Push first` at the front end, `Push last` /
-`Pop last` at the rear end. The point is purely structural: operations exist at *both*
-ends simultaneously — the one-sentence summary of what makes a deque different from a
-stack (one end only) or a queue (push one end, pop the other only).
+Compare to [[Queue]] (3 operations) and [[Stack]] (3 operations) — the deque
+has 6 operations, essentially the union of both.
 
-C++'s `std::deque<int>` already implements exactly this:
+## Worked trace of the built-in deque
+
+From [deque.cpp](../codes/cpp/chapter_stack_and_queue/deque.cpp), using C++'s
+`std::deque`:
+
 ```cpp
 deque<int> deque;
 
-deque.push_back(2);    // push_last  -- add at rear
-deque.push_back(5);
-deque.push_front(3);   // push_first -- add at front
-deque.push_front(1);
-// deque is now (front to rear): [1, 3, 2, 5]
+deque.push_back(2);   // deque (front→rear): [2]
+deque.push_back(5);   // [2, 5]
+deque.push_back(4);   // [2, 5, 4]
+deque.push_front(3);  // [3, 2, 5, 4]   ← 3 inserted at front
+deque.push_front(1);  // [1, 3, 2, 5, 4] ← 1 inserted at front
 
-int front = deque.front();   // peek_first -> 1
-int back = deque.back();     // peek_last  -> 5
+int front = deque.front();  // front = 1
+int back  = deque.back();   // back  = 4
 
-deque.pop_front();   // pop_first -> removes 1
-deque.pop_back();    // pop_last  -> removes 5
+deque.pop_front();  // removes 1. deque is now [3, 2, 5, 4]
+deque.pop_back();   // removes 4. deque is now [3, 2, 5]
 ```
-Note the standard library uses `push_back`/`push_front`/`pop_back`/`pop_front` instead
-of the book's `push_last`/`push_first`/`pop_last`/`pop_first` naming — same six
-operations, different verb pairs. The hand-rolled classes below use the book's naming.
 
-## Linked list implementation — worked trace
+Key difference from `std::queue`: `std::deque` supports both
+`push_front`/`pop_front` AND `push_back`/`pop_back`. The standard queue only
+allows push at the back and pop from the front.
 
-Because both ends must be reachable, a deque cannot reuse [[Queue]]'s singly linked list
-(only a `next` pointer, so it can only walk forward). It needs a **doubly linked list**:
-every node carries both `next` (forward) and `prev` (backward), so the tail is reachable
-from the head *and* the head from the tail without walking the whole chain.
+Same C++ quirk as `std::stack` and `std::queue`: `pop_front()` and `pop_back()`
+are **void** — they do not return the removed value. You must call `front()` or
+`back()` first to read it, then pop.
 
-Diagram: **`linkedlist_deque_step1.png`** — setup: the same operations diagram on the
-left, paired with the actual doubly-linked-list structure on the right: `Head node
-3 ⇄ 2 ⇄ 5 Tail node`, where `⇄` is a pair of pointers (a `next` arrow forward, a `prev`
-arrow backward) between adjacent nodes. Head = front, tail = rear — same convention as
-[[Queue]].
+## Building a deque from scratch
 
-Diagram: **`linkedlist_deque_step2_push_last.png`** — `push_last(4)`. Caption: "Push
-node 4 to the tail of the linked list." Result: `Head 3 ⇄ 2 ⇄ 5 ⇄ 4 Tail`. Identical in
-mechanism to [[Queue]]'s tail-insertion — attach the new node after the current tail,
-move the tail pointer to it. The only extra step versus a singly linked queue: the new
-node's `prev` also gets wired back to the old tail.
+### Implementation 1 — backed by a doubly linked list
 
-Diagram: **`linkedlist_deque_step3_push_first.png`** — `push_first(1)`. Caption: "Push
-node 1 to the head of the linked list." Result: `Head 1 ⇄ 3 ⇄ 2 ⇄ 5 ⇄ 4 Tail`. This is
-the operation [[Queue]] could **never** do — a singly linked queue has no way to insert
-before its own head, because nothing points backward from the old head. Here it's
-possible precisely because of the `prev` pointer: new node `1` becomes head, its `next`
-points at old-head `3`, and `3`'s `prev` gets wired back to `1`.
+Recall from [[Queue]] that the linked-list-backed queue used a **singly** linked
+list with `front` and `rear` pointers. That was sufficient because insertion
+only happened at the tail and removal only at the head.
 
-Diagram: **`linkedlist_deque_step4_pop_last.png`** — `pop_last()`. Caption: "Remove the
-tail node." Starting from `1 ⇄ 3 ⇄ 2 ⇄ 5 ⇄ 4`, removes node `4`, leaving `1 ⇄ 3 ⇄ 2 ⇄ 5`
-with `5` as new tail. Again an operation [[Queue]] could never do (no backward pointer
-to reach the second-to-last node from the tail) — here `5`'s `next` is set to `nullptr`
-and the tail pointer moves back to `5` using the `prev` pointer it already had.
+A deque needs to insert *and* remove at **both** ends. Removing from the tail of
+a singly linked list is O(n) — you need to find the second-to-last node to
+update, which requires walking the entire chain from the head. The fix: use a
+**doubly linked list**, where each node has both `next` and `prev` pointers.
+This lets you step backward from the tail in O(1).
 
-Diagram: **`linkedlist_deque_step5_pop_first.png`** — `pop_first()`. Caption: "Remove
-the head node." Starting from `3 ⇄ 2 ⇄ 5`, removes node `3`, leaving `2 ⇄ 5` with `2` as
-new head. This part *is* something [[Queue]] could already do — head-removal only ever
-needs the `next` pointer, not `prev`.
-
-C++ code, [linkedlist_deque.cpp](../en/codes/cpp/chapter_stack_and_queue/linkedlist_deque.cpp):
-```cpp
-void push(int num, bool isFront) {
-    DoublyListNode *node = new DoublyListNode(num);
-    if (isEmpty())               // first element: it's both front and rear at once
-        front = rear = node;
-    else if (isFront) {          // push_first branch
-        front->prev = node;
-        node->next = front;
-        front = node;
-    } else {                     // push_last branch
-        rear->next = node;
-        node->prev = rear;
-        rear = node;
-    }
-    queSize++;
-}
-```
-Trace `push(1, true)` — `push_first(1)` — onto `3 ⇄ 2 ⇄ 5 ⇄ 4` (front=`3`, rear=`4`):
-not empty and `isFront` is true, so the middle branch runs. `front->prev = node` sets
-`3`'s `prev` to the new node `1`. `node->next = front` sets `1`'s `next` to `3`.
-Finally `front = node` moves the front pointer to `1`. Order matters for the same
-reason as [[Linked List]]'s insertion — the new node must be wired into the chain
-(both directions) *before* `front` is reassigned, or the only reference to the old head
-would be lost mid-operation.
+From [linkedlist_deque.cpp](../codes/cpp/chapter_stack_and_queue/linkedlist_deque.cpp):
 
 ```cpp
-int pop(bool isFront) {
-    if (isEmpty()) throw out_of_range("Deque is empty");
+struct DoublyListNode {
     int val;
-    if (isFront) {                      // pop_first branch
-        val = front->val;
-        DoublyListNode *fNext = front->next;
-        if (fNext != nullptr) {
-            fNext->prev = nullptr;
-            front->next = nullptr;
+    DoublyListNode *next;  // successor
+    DoublyListNode *prev;  // predecessor
+    DoublyListNode(int val) : val(val), prev(nullptr), next(nullptr) {}
+};
+```
+
+The class tracks `front` (head) and `rear` (tail), same as the queue. But now
+`push` and `pop` each handle both directions via a single method with a boolean
+flag:
+
+```cpp
+class LinkedListDeque {
+  private:
+    DoublyListNode *front, *rear;
+    int queSize = 0;
+
+  public:
+    /* push to front or rear */
+    void push(int num, bool isFront) {
+        DoublyListNode *node = new DoublyListNode(num);
+        if (isEmpty())
+            front = rear = node;
+        else if (isFront) {
+            front->prev = node;   // old head's prev points to new node
+            node->next = front;   // new node's next points to old head
+            front = node;         // update head
+        } else {
+            rear->next = node;    // old tail's next points to new node
+            node->prev = rear;    // new node's prev points to old tail
+            rear = node;          // update tail
         }
-        delete front;
-        front = fNext;
-    } else {                            // pop_last branch
-        val = rear->val;
-        DoublyListNode *rPrev = rear->prev;
-        if (rPrev != nullptr) {
-            rPrev->next = nullptr;
-            rear->prev = nullptr;
-        }
-        delete rear;
-        rear = rPrev;
+        queSize++;
     }
-    queSize--;
-    return val;
-}
-```
-Trace `pop(false)` — `pop_last()` — on `1 ⇄ 3 ⇄ 2 ⇄ 5 ⇄ 4` (front=`1`, rear=`4`):
-`isFront` false, so the `pop_last` branch runs. `val = rear->val` reads `4` first.
-`rPrev = rear->prev` is node `5`. Since `rPrev` isn't null, both directions are severed:
-`rPrev->next = nullptr` (so `5` no longer points at the soon-to-be-freed `4`), and
-`rear->prev = nullptr` (cleanup on the node about to be freed). `delete rear` frees
-node `4`, then `rear = rPrev` moves rear back to `5`. Result: `1 ⇄ 3 ⇄ 2 ⇄ 5`, rear=`5`
-— matching step 4's diagram exactly.
+    void pushFirst(int num) { push(num, true); }
+    void pushLast(int num)  { push(num, false); }
 
-## Array implementation — worked trace
-
-Just like [[Queue]]'s array implementation avoided O(n) shifts with a circular array
-(`front` index + `size` counter), the deque reuses that exact trick — but `front` now
-needs to move in **both** directions (left for `push_first`/`pop_first`, right for
-`push_last`/`pop_last`), not just rightward like a plain queue.
-
-Diagram: **`array_deque_step1.png`** — setup, directly parallel to [[Queue]]'s
-`array_queue_step1.png`. Array holds `[3, 2, 5]`, `front` points at index of value `3`,
-`rear` points one slot past `5`, same relationship: `rear = front + size`.
-
-The new piece is the `index()` helper, [array_deque.cpp](../en/codes/cpp/chapter_stack_and_queue/array_deque.cpp):
-```cpp
-int index(int i) {
-    // Perform modulo to achieve a circular array
-    return (i + capacity()) % capacity();
-}
-```
-
-Diagram: **`array_deque_step2_push_last.png`** — `push_last(4)`. Caption: "1. Update the
-variable rear. 2. Set the element to rear. 3. Increase size by 1." Identical to
-[[Queue]]'s `push()` — nothing new on this end, since rear only ever moves rightward.
-
-Diagram: **`array_deque_step3_push_first.png`** — `push_first(1)`. Caption: "1. Decrease
-front by 1. 2. Set the element to front. 3. Increase size by 1." This is the genuinely
-new direction — `front` moves **left**, something [[Queue]]'s array implementation
-never needed.
-
-```cpp
-void pushFirst(int num) {
-    if (queSize == capacity()) { cout << "Deque is full" << endl; return; }
-    front = index(front - 1);   // move front left, wrapping if needed
-    nums[front] = num;
-    queSize++;
-}
+    /* pop from front or rear */
+    int pop(bool isFront) {
+        if (isEmpty()) throw out_of_range("Queue is empty");
+        int val;
+        if (isFront) {
+            val = front->val;
+            DoublyListNode *fNext = front->next;
+            if (fNext != nullptr) {
+                fNext->prev = nullptr;
+                front->next = nullptr;
+            }
+            delete front;
+            front = fNext;
+        } else {
+            val = rear->val;
+            DoublyListNode *rPrev = rear->prev;
+            if (rPrev != nullptr) {
+                rPrev->next = nullptr;
+                rear->prev = nullptr;
+            }
+            delete rear;
+            rear = rPrev;
+        }
+        queSize--;
+        return val;
+    }
+    int popFirst() { return pop(true); }
+    int popLast()  { return pop(false); }
+};
 ```
 
-**Worked trace of the left-wraparound**, using `capacity = 10`, suppose `front = 0`
-(front element sits at physical index 0, nothing free to its immediate left inside
-bounds). Call `push_first(1)`:
-```
-front = index(front - 1)
-      = index(0 - 1)
-      = index(-1)
-      = (-1 + 10) % 10
-      = 9 % 10
-      = 9
-```
-The new element is written at physical index `9` — the *last* slot — even though this
-is conceptually a front insertion. This is exactly why `index()` adds `capacity()`
-before the modulo: in C++, `-1 % 10` evaluates to `-1`, not `9` (C++'s `%` does **not**
-wrap negative numbers into a positive range the way Python's does). Adding `capacity()`
-first — `(-1 + 10) = 9` — guarantees a non-negative value going into `% capacity()`, so
-the wraparound lands correctly at index `9` instead of producing an invalid negative
-array index. This is the one genuinely new trick in the deque's array implementation
-that neither [[Queue]] nor [[Stack]] needed, since they only ever moved their index
-pointers in one direction.
+**Worked trace** — following the driver code in `main()`:
 
-Diagram: **`array_deque_step4_pop_last.png`** — `pop_last()`. Caption: "1. Decrease
-size by 1." That's the entire operation — no pointer move at all, because `rear` isn't
-stored as its own variable; it's always *computed* as `front + size - 1` (via
-`peekLast()`'s `index(front + queSize - 1)`). "Removing" the last element just shrinks
-`size` by one — the value stays physically in memory, now outside the valid
-`[front, front+size-1]` range, the same "logically gone, physically untouched" pattern
-[[Queue]] used for its `pop()`.
+1. `pushLast(3)`: empty, so `front = rear = node(3)`. Chain: `3`.
+2. `pushLast(2)`: `rear->next = node(2)`, `node(2)->prev = rear(3)`,
+   `rear = node(2)`. Chain: `3 ↔ 2`.
+3. `pushLast(5)`: chain becomes `3 ↔ 2 ↔ 5`.
+4. `pushLast(4)`: chain becomes `3 ↔ 2 ↔ 5 ↔ 4`.
+5. `pushFirst(1)`: `front->prev = node(1)`, `node(1)->next = front(3)`,
+   `front = node(1)`. Chain: `1 ↔ 3 ↔ 2 ↔ 5 ↔ 4`.
+6. `popLast()`: reads `rear->val = 4`, sets `rPrev = node(5)`, clears links,
+   deletes old rear, `rear = node(5)`. Chain: `1 ↔ 3 ↔ 2 ↔ 5`. Returns `4`.
+7. `popFirst()`: reads `front->val = 1`, sets `fNext = node(3)`, clears links,
+   deletes old front, `front = node(3)`. Chain: `3 ↔ 2 ↔ 5`. Returns `1`.
 
-Diagram: **`array_deque_step5_pop_first.png`** — `pop_first()`. Caption: "1. Increase
-front by 1. 2. Decrease size by 1." Identical to [[Queue]]'s `pop()` — this direction
-was already solved there, since `front` moving rightward is the queue's normal case.
+The `prev` pointer is exactly what makes `popLast()` possible in O(1). Compare
+to the singly-linked queue: there, removing the tail would require walking the
+entire chain from head to find the second-to-last node (O(n)), because there is
+no `prev` pointer. The doubly-linked list pays for this with extra memory per
+node (one additional pointer).
+
+Diagram: **`linkedlist_deque_step2_push_last.png`** — shows `pushLast(4)` on
+chain `3 ↔ 2 ↔ 5`. New node `4` is appended after the old tail `5`:
+`5->next = 4`, `4->prev = 5`, and `rear` updates to `4`. Same as the queue's
+linked-list push — appending at the tail.
+
+Diagram: **`linkedlist_deque_step3_push_first.png`** — shows `pushFirst(1)` on
+chain `3 ↔ 2 ↔ 5 ↔ 4`. New node `1` is prepended before the old head `3`:
+`3->prev = 1`, `1->next = 3`, and `front` updates to `1`. Same as the stack's
+linked-list push — prepending at the head.
+
+### Implementation 2 — backed by a circular array
+
+The deque's circular array implementation extends the queue's circular array.
+Recall from [[Queue]] that the array-backed queue tracked `front` (index of the
+front element) and `queSize` (element count), computing
+`rear = (front + queSize) % capacity` for enqueue. The deque adds the reverse
+operation: **enqueue at the front**.
+
+From [array_deque.cpp](../codes/cpp/chapter_stack_and_queue/array_deque.cpp):
 
 ```cpp
-int popFirst() {
-    int num = peekFirst();
-    front = index(front + 1);
-    queSize--;
-    return num;
-}
+class ArrayDeque {
+  private:
+    vector<int> nums;
+    int front;
+    int queSize;
 
-int popLast() {
-    int num = peekLast();
-    queSize--;   // no pointer to move -- rear is always derived from front + size
-    return num;
-}
+  public:
+    ArrayDeque(int capacity) {
+        nums.resize(capacity);
+        front = queSize = 0;
+    }
+
+    /* helper: circular index */
+    int index(int i) {
+        return (i + capacity()) % capacity();
+    }
+
+    /* enqueue at front */
+    void pushFirst(int num) {
+        if (queSize == capacity()) { cout << "Full" << endl; return; }
+        front = index(front - 1);   // move front BACKWARD (wraps via modulo)
+        nums[front] = num;
+        queSize++;
+    }
+
+    /* enqueue at rear — same as the queue's push */
+    void pushLast(int num) {
+        if (queSize == capacity()) { cout << "Full" << endl; return; }
+        int rear = index(front + queSize);
+        nums[rear] = num;
+        queSize++;
+    }
+
+    /* dequeue from front — same as the queue's pop */
+    int popFirst() {
+        int num = peekFirst();
+        front = index(front + 1);
+        queSize--;
+        return num;
+    }
+
+    /* dequeue from rear — the new operation */
+    int popLast() {
+        int num = peekLast();
+        queSize--;   // just shrink size; rear recomputes automatically
+        return num;
+    }
+
+    int peekLast() {
+        if (isEmpty()) throw out_of_range("Deque is empty");
+        int last = index(front + queSize - 1);
+        return nums[last];
+    }
+};
 ```
 
-## Typical applications
+The key new trick is `pushFirst`: it moves `front` **backward** by one slot
+using `index(front - 1)`. The `index()` helper adds `capacity()` before doing
+the modulo, so if `front` is currently 0, `index(0 - 1) = index(-1) =
+(-1 + capacity) % capacity = capacity - 1` — it wraps to the **last** slot of
+the array, moving backward in the circle. This is the reverse of how
+`popFirst` moves `front` forward.
 
-A deque essentially combines what a stack and a queue can each do, adding flexibility
-neither has alone, so it naturally covers use cases needing characteristics of both.
+Diagram: **`array_deque_step2_push_last.png`** — shows `pushLast(4)` on
+`[3, 2, 5]` with `front = 0`, `queSize = 3`. `rear = (0 + 3) % 10 = 3`, so
+`4` is written at index 3, `queSize` becomes 4. Identical to the regular
+queue's push.
 
-Concrete example: **software undo functionality**. A plain LIFO stack (per [[Stack]])
-is the obvious fit for undo, since "undo the most recent action" is exactly a `pop()`.
-But in practice undo history is almost always **capped** — an editor might keep only
-the last 50 actions, not an unbounded history. Once that cap is hit, adding a new
-action means the *oldest* saved action (sitting at the bottom of the stack) must be
-evicted — "remove from the bottom" is a `pop_first()`-style operation a plain stack
-cannot do (a stack only ever touches its top). A deque fits perfectly: undo/redo
-pushing and popping still happens at one end following LIFO order, while capped-history
-eviction happens at the *other* end. Stack-like behavior at one end, queue-like
-eviction at the other, in the same structure.
+Diagram: **`array_deque_step3_push_first.png`** — shows `pushFirst(1)` on
+`[3, 2, 5, 4]` with `front = 0`, `queSize = 4`.
+`front = index(0 - 1) = (0 - 1 + 10) % 10 = 9`. So `1` is written at index 9
+(the last slot), and `front` is now 9. The deque's elements now span indices
+9, 0, 1, 2, 3 (wrapping around), reading front-to-rear as `1, 3, 2, 5, 4`.
+This demonstrates the circular nature — the front can move backward past
+index 0 and wrap to the end of the array, exactly mirroring how the rear can
+move forward past the last index and wrap to 0.
+
+**Worked trace of `popLast`**: After `pushFirst(1)`, `front = 9`,
+`queSize = 5`, elements are `[1, 3, 2, 5, 4]` at indices 9, 0, 1, 2, 3. Now
+`popLast()`: `peekLast()` computes `last = index(9 + 5 - 1) = index(13) =
+13 % 10 = 3`, reads `nums[3] = 4`. Then `queSize` decrements to 4. The rear is
+now implicitly at `index(9 + 4) = 3` — but since we only decremented size
+without touching index 3, the value `4` is still physically there. It is just
+no longer considered part of the deque.
+
+## Why a deque instead of a stack or queue?
+
+The documentation gives a concrete example: the **"undo" feature** in software.
+You would normally model undo with a stack — push each action, pop to undo. But
+most software limits the undo history (e.g., only 50 steps). When the stack is
+full, you need to delete the **oldest** entry — the one at the **bottom** of the
+stack. A regular stack cannot do this (it only operates on the top). A deque
+can: it keeps the LIFO undo behavior at one end, while also allowing removal
+from the other end when the history limit is reached.
+
+More generally: any situation where you need "mostly stack" or "mostly queue"
+behavior but occasionally need the opposite end too is a natural fit for a
+deque.
+
+## Comparison of the two implementations
+
+Same trade-offs as the [[Stack]] and [[Queue]]: array-backed has better cache
+locality but fixed capacity; doubly-linked-list-backed is consistently O(1) but
+uses more memory per node (two pointers instead of one for the queue's singly
+linked list, or none for the array).
 
 ## Complexity
 
-| Operation | Complexity | Why |
+| Operation | Doubly-linked-list-backed | Circular-array-backed |
 |---|---|---|
-| `push_first()` / `push_last()` | O(1) | Array: write at computed index + move `front` or `rear`. Linked list: attach at head/tail with two pointer updates |
-| `pop_first()` / `pop_last()` | O(1) | Array: move `front` or shrink `size` (no shift). Linked list: detach head/tail node, no traversal |
-| `peek_first()` / `peek_last()` | O(1) | Direct read of the front/rear slot or node |
+| pushFirst | O(1) | O(1), capacity-limited |
+| pushLast | O(1) | O(1), capacity-limited |
+| popFirst | O(1) | O(1) |
+| popLast | O(1) | O(1) |
+| peekFirst | O(1) | O(1) |
+| peekLast | O(1) | O(1) |
 
 ## Code
-- [deque.cpp](../en/codes/cpp/chapter_stack_and_queue/deque.cpp) — `std::deque<int>`
-  usage: push_back, push_front, front, back, pop_front, pop_back.
-- [linkedlist_deque.cpp](../en/codes/cpp/chapter_stack_and_queue/linkedlist_deque.cpp) —
-  hand-rolled `LinkedListDeque` class on a doubly linked list (`DoublyListNode` with
-  `next` and `prev`), generalized `push(num, isFront)` / `pop(isFront)`.
-- [array_deque.cpp](../en/codes/cpp/chapter_stack_and_queue/array_deque.cpp) — hand-rolled
-  `ArrayDeque` class on a circular array, with an `index()` helper that handles
-  negative-index wraparound via `(i + capacity()) % capacity()`.
+- [deque.cpp](../codes/cpp/chapter_stack_and_queue/deque.cpp) — `std::deque`
+  usage, push_front/push_back/front/back/pop_front/pop_back, all exercised in
+  `main()`.
+- [linkedlist_deque.cpp](../codes/cpp/chapter_stack_and_queue/linkedlist_deque.cpp) —
+  `LinkedListDeque` class, doubly-linked-list-backed push/pop at both ends.
+- [array_deque.cpp](../codes/cpp/chapter_stack_and_queue/array_deque.cpp) —
+  `ArrayDeque` class, circular-array-backed push/pop at both ends via modulo.
 
 Diagrams (from `en/docs/chapter_stack_and_queue/deque.assets/`):
-- `deque_operations.png` — push/pop at both ends traced conceptually on `[3,2,5,4]`
-- `linkedlist_deque_step1.png` — array-view vs. doubly-linked-list-view of the same
-  deque, head = front, tail = rear
-- `linkedlist_deque_step2_push_last.png` — push_last(4) becomes the new tail node
-- `linkedlist_deque_step3_push_first.png` — push_first(1) becomes the new head node
-- `linkedlist_deque_step4_pop_last.png` — pop_last() removes the tail node
-- `linkedlist_deque_step5_pop_first.png` — pop_first() removes the head node
-- `array_deque_step1.png` — the `rear = front + size` relationship
-- `array_deque_step2_push_last.png` — the 3-step push_last recipe (update rear, write, size++)
-- `array_deque_step3_push_first.png` — the 3-step push_first recipe (front--, write, size++)
-- `array_deque_step4_pop_last.png` — the 1-step pop_last recipe (size--, no pointer move)
-- `array_deque_step5_pop_first.png` — the 2-step pop_first recipe (front++, size--)
+- `deque_operations.png` — push/pop at both ends visualized
+- `linkedlist_deque_step1.png` through `linkedlist_deque_step5_pop_first.png` —
+  doubly-linked-list deque, push and pop traced at both ends
+- `array_deque_step1.png` through `array_deque_step5_pop_first.png` —
+  circular-array deque, push and pop traced against `front`/`queSize` index
+  bookkeeping
 
 ## Related
-- [[Array]]
-- [[Linked List]]
-- [[List]]
-- [[Stack]]
-- [[Queue]]
+- [[Stack]] — LIFO subset of deque behavior (one-end operations only)
+- [[Queue]] — FIFO subset of deque behavior (opposite-end operations only)
+- [[Linked List]] — doubly linked list variant used by the linked-list-backed
+  deque
+
+### Typical applications
+- **Undo with limited history** — stack-like LIFO undo at the top, with the
+  ability to discard the oldest entry from the bottom when the history limit is
+  reached. A regular stack cannot delete from the bottom; a deque can.
+- **Any scenario combining stack and queue needs** — a deque can implement all
+  application scenarios of both stacks and queues, while providing greater
+  flexibility for cases where both ends need occasional access.
 
 ## Self-check questions
-1. Why does a deque's linked-list implementation require `prev` pointers, when
-   [[Queue]]'s linked-list implementation only ever needed `next`?
-2. Trace `push_first(1)` onto the doubly linked list `3 ⇄ 2 ⇄ 5 ⇄ 4` (front=3, rear=4)
-   — what pointer assignments happen, and in what order, and why does the order matter?
-3. With `capacity = 10` and `front = 0`, what physical array index does `push_first()`
-   write to, and why does the `index()` helper add `capacity()` before applying `%`?
-4. Why does `popLast()` in the array implementation not need to move any pointer at
-   all, unlike `popFirst()`?
-5. Give the concrete example from the source doc of why a plain [[Stack]] is
-   insufficient for "undo" functionality with a capped history, and explain how a
-   deque solves it.
+1. Why does the deque's linked-list implementation require a **doubly** linked
+   list, while the queue's linked-list implementation works with a **singly**
+   linked list?
+2. In the circular-array deque, `pushFirst` computes
+   `front = index(front - 1)`. If `front = 0` and `capacity = 10`, what value
+   does `front` become? Why does this work?
+3. How does `popLast()` in the array-backed deque work without storing a
+   separate `rear` variable?
+4. Explain why a deque can replace a stack for implementing "undo with limited
+   steps" but a plain stack cannot.
+5. Name all six O(1) deque operations and state which ones overlap with the
+   stack's interface and which overlap with the queue's interface.
+
+## Chapter 5 Quiz Results
+
+**Date**: 2026-08-10 | **Score**: 4/7 | **Status**: passed
+
+**Questions missed (deque-related):**
+- Q3 ❌ **Why doubly linked list?** Answered "more operations" — too vague. Correct:
+  `popLast` specifically needs `prev` pointer. Removing tail of singly linked list is
+  O(n) (must walk from head to find second-to-last node). Doubly linked gives
+  `rear->prev` in O(1). Queue never removes from tail, so singly linked suffices.
+- Q5 ❌ **Circular array index wrapping.** Answered "front = -2" — impossible.
+  `index()` helper computes `(i + capacity) % capacity`, so `index(0-1)` with
+  capacity 8 = `(-1+8)%8 = 7`. Front wraps to valid index, never goes negative.
+  Correct trace: after `pushFirst(5)` front=7, after `pushFirst(1)` front=6.
+  Occupied: indices 6, 7, 0, 1, 2.
+- Q7 ❌ **Undo deque mapping.** Correct mapping: `pushLast` = record new action
+  (rear end), `popLast` = undo most recent (same rear end, LIFO), `popFirst` =
+  discard oldest (front end, when 100-step limit hit). Key insight: record and undo
+  use the SAME end (rear) — that's the stack behavior. The deque's extra power is
+  `popFirst` at the opposite end.
+
+**Questions answered correctly (deque-related):**
+- None of the deque-specific questions were answered correctly
+
+See [[Stack]] for full quiz breakdown.

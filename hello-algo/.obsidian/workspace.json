@@ -11,10 +11,14 @@
             "id": "232e9e6123de50ce",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "Stack & Queue/Stack.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Stack"
             }
           }
         ]
@@ -95,6 +99,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "Stack & Queue/Stack.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -167,8 +172,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -181,7 +185,7 @@
       "bases:Create new base": false
     }
   },
-  "active": "15532b5874e51f0a",
+  "active": "232e9e6123de50ce",
   "lastOpenFiles": [
     "Data structure/Basic Data Types.md",
     "Data structure/Classification of Data Structure.md",

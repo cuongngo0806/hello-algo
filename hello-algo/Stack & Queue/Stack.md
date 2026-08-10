@@ -1,240 +1,293 @@
 ---
 tags:
-  - chapter/stack-queue
-status: taught
-date: 2026-08-07
+  - chapter/stack-and-queue
+status: done
+date: 2026-08-10
 ---
 
 # Stack
 
 ## Core idea
-A **stack** is a linear data structure that follows the **Last In, First Out (LIFO)**
-principle. The book's own analogy is a pile of plates on a table: if you're only
-allowed to move one plate at a time, reaching the bottom plate means removing every
-plate above it first, one at a time, in the reverse order they were stacked. Whatever
-went on *last* comes off *first* — that reversal is the entire meaning of LIFO.
+A **stack** is a linear data structure that follows a **last-in, first-out (LIFO)**
+rule. Think of it as a stack of plates: you can only add or remove one plate at a
+time, and always from the top. To reach the bottom plate you must first remove every
+plate above it, in reverse order of how they were placed.
 
-The end where elements go in and out is called the **top**; the other end is the
-**bottom**. Adding an element is **push**; removing the top element is **pop**.
+Replace "plate" with any element type (integers, characters, objects) and you get the
+stack data structure. The end where elements are added/removed is the **top**; the
+other end is the **bottom**. The operation that adds to the top is called **push**;
+the operation that removes from the top is called **pop**; reading the top element
+without removing it is **peek** / `top()`.
 
-### Worked trace of push/pop
+Diagram: **`stack_operations.png`** — starts with stack `[1, 3, 2]` (bottom to top).
+`push(5)` adds 5 on top. `push(4)` adds 4 on top (top-to-bottom reading is now
+`4, 5, 2, 3, 1`). Then two `pop()` calls remove 4, then 5 — exactly reversing the order
+they were added. That reversal is the LIFO rule made visual: whatever went in last
+comes out first.
 
-Diagram: **`stack_operations.png`** traces a stack starting as `[1, 3, 2]`
-(bottom to top) through four operations:
+## Worked trace of the built-in stack
 
-1. `push(5)` → `[1, 3, 2, 5]` — `5` lands on top.
-2. `push(4)` → `[1, 3, 2, 5, 4]` — `4` lands on top of that.
-3. `pop()` → returns `4`, stack becomes `[1, 3, 2, 5]` — the *most recently pushed*
-   element comes off first, not the oldest one.
-4. `pop()` → returns `5`, stack becomes `[1, 3, 2]` — back to the starting state.
+From [stack.cpp](../codes/cpp/chapter_stack_and_queue/stack.cpp), using C++'s built-in
+`std::stack`:
 
-The order things came *out* was `4`, then `5` — the exact reverse of the order they
-went *in* (`5`, then `4`). That reversal is what LIFO means in practice, not just in
-definition.
-
-### Why does a stack need its own type at all?
-
-This is a framing point worth sitting with: **a stack can be viewed as a restricted
-array or a restricted linked list.** Both of those structures already support
-inserting/removing at any position — a stack doesn't add a new *capability* on top of
-them. What it does is take an existing structure and hide every operation except
-push/pop/peek at one end. The value isn't a new algorithm; it's a narrower *contract*.
-By refusing to let any caller touch the middle, a stack guarantees LIFO ordering holds
-everywhere it's used — which makes code that depends on that ordering much easier to
-reason about, because you never have to check "did something sneak an element in out
-of order."
-
-### Common operations — all O(1)
-
-| Method | Description | Time Complexity |
-|---|---|---|
-| `push()` | Push an element onto the stack (add to top) | O(1) |
-| `pop()` | Pop the top element off the stack | O(1) |
-| `top()` (`peek()` in some languages) | Read the top element without removing it | O(1) |
-
-All three are O(1) for the same reason: they only ever touch the top slot. There's
-never a reason to walk through the middle of a stack, unlike, say, [[Linked List]]'s
-`access()`.
-
-C++ usage, [stack.cpp:11-38](../en/codes/cpp/chapter_stack_and_queue/stack.cpp):
 ```cpp
 stack<int> stack;
+stack.push(1);   // stack (bottom→top): [1]
+stack.push(3);   // [1, 3]
+stack.push(2);   // [1, 3, 2]
+stack.push(5);   // [1, 3, 2, 5]
+stack.push(4);   // [1, 3, 2, 5, 4]   <- top is 4
 
-stack.push(1);   // Push elements
-stack.push(3);
-stack.push(2);
-stack.push(5);
-stack.push(4);
-// stack is now (bottom to top): [1, 3, 2, 5, 4]
+int top = stack.top();   // top = 4  (reads only, does not remove)
 
-int top = stack.top();      // Access top element -> 4 (does NOT remove it)
+stack.pop();      // removes 4. stack is now [1, 3, 2, 5]. pop() itself returns nothing.
 
-stack.pop();                 // Pop top element -> stack becomes [1, 3, 2, 5]
-
-int size = stack.size();     // Get stack length -> 4
-bool empty = stack.empty();  // Check if empty -> false
+int size = stack.size();    // size = 4
+bool empty = stack.empty(); // empty = false
 ```
 
-**A real C++ gotcha worth calling out explicitly**: `std::stack::pop()` does **not**
-return the popped value — unlike, say, a `vector`'s data being readable right up to
-the moment you call `pop_back()`. To actually use the value you're removing, you must
-call `.top()` first to read it, then call `.pop()` separately to remove it. This
-two-step pattern shows up directly in both implementations below.
+**Important C++-specific detail**: `stack.pop()` has **no return value** — it's void.
+To get the popped value you must call `top()` first to read it, *then* call `pop()` to
+remove it — exactly what the driver code does. This differs from languages like
+Python, where `stack.pop()` both removes and returns the value in a single call.
 
-## Linked list implementation — worked trace
+| Method | Description | Time complexity |
+|---|---|---|
+| `push()` | insert element at top | O(1) |
+| `pop()` | remove top element | O(1) |
+| `top()` / `peek()` | read top element without removing | O(1) |
 
-When a linked list backs a stack, the **head node becomes the stack's top**, and the
-tail becomes the bottom. This is the exact same head-insertion mechanic from
-[[Linked List]], just always applied at one fixed end.
+All three are O(1) regardless of stack size, because they only ever touch the top.
+That constant-time guarantee is the entire reason the stack abstraction is useful —
+even though the same effect could be achieved with a raw array or linked list, the
+stack interface simply forbids touching anything except the top, which is exactly
+what LIFO logic needs.
 
-Diagram: **`linkedlist_stack_step1.png`** — starting state: a stack drawn as a
-vertical box `[5, 2, 3, 1]` (top to bottom) sitting next to its actual linked-list
-representation: `Head node 5 → 2 → 3 → 1 Tail node`. Both drawings are the same data —
-just two different ways of visualizing it.
+## Building a stack from scratch
 
-Diagram: **`linkedlist_stack_step2_push.png`** — pushing `4`. Caption: "Push node `4`
-to the head of the linked list." After the push: `Head node 4 → 5 → 2 → 3 → 1 Tail
-node`. This is the **head insertion method**: every new element becomes the new head,
-pointing forward at whatever used to be the head.
+C++ provides `std::stack` for free, but building one manually shows *why* push/pop/top
+are all O(1). Since a stack only allows adding/removing at one end, it can be thought
+of as a **restricted array or restricted linked list** — take a normal array or linked
+list, which allows insert/delete anywhere, and simply hide every operation except the
+ones at one end.
 
-Diagram: **`linkedlist_stack_step3_pop.png`** — popping. Caption: "Remove the head
-node." Starting from `5 → 2 → 3 → 1`, popping removes node `5` entirely, leaving
-`2 → 3 → 1` as the new head-to-tail chain — `2` is now the top.
+### Implementation 1 — backed by a linked list
 
-C++ code, [linkedlist_stack.cpp:36-53](../en/codes/cpp/chapter_stack_and_queue/linkedlist_stack.cpp):
+Idea: use the **head node of the linked list as the stack's top**. Pushing inserts a
+new node at the head ("head insertion"); popping removes the head node.
+
+Diagram: **`linkedlist_stack_step2_push.png`** — shows `push(4)`. On the right, the
+actual linked-list structure: before the push, head was `5`, chain `5 → 2 → 3 → 1`.
+After `push(4)`, a new node `4` becomes the head with `next` pointing at the old head
+`5`, giving chain `4 → 5 → 2 → 3 → 1`. On the left, the same operation drawn as a
+stack — 4 lands on top. Both views describe the identical underlying memory
+operation; the stack view is just the restricted way of looking at the linked list.
+
+Why the **head** and not the tail? Inserting at the head of a singly linked list is
+O(1) — create the node, point its `next` at the current head, update the head
+pointer. Inserting at the tail would need walking the whole list to find the last
+node (O(n)) unless a separate tail pointer is tracked — and even then, *removing*
+from the tail of a singly linked list stays O(n), since finding the new
+second-to-last node requires a full walk. Using the head sidesteps all of that.
+
+Code, [linkedlist_stack.cpp](../codes/cpp/chapter_stack_and_queue/linkedlist_stack.cpp):
+
 ```cpp
-void push(int num) {
-    ListNode *node = new ListNode(num);
-    node->next = stackTop;    // new node points forward at the current top
-    stackTop = node;           // new node becomes the top
-    stkSize++;
-}
+class LinkedListStack {
+  private:
+    ListNode *stackTop;  // head node doubles as the stack top
+    int stkSize;
 
-int pop() {
-    int num = top();           // read the value first (per the C++ gotcha above)
-    ListNode *tmp = stackTop;
-    stackTop = stackTop->next;  // advance top pointer to the next node
-    delete tmp;                 // free the old top node's memory
-    stkSize--;
-    return num;
-}
+  public:
+    /* push */
+    void push(int num) {
+        ListNode *node = new ListNode(num);
+        node->next = stackTop;   // new node points at old head
+        stackTop = node;         // new node becomes the head
+        stkSize++;
+    }
+
+    /* pop */
+    int pop() {
+        int num = top();
+        ListNode *tmp = stackTop;
+        stackTop = stackTop->next;  // head moves to the second node
+        delete tmp;                  // free the old head's memory
+        stkSize--;
+        return num;
+    }
+
+    /* peek */
+    int top() {
+        if (isEmpty()) throw out_of_range("stack is empty");
+        return stackTop->val;
+    }
+};
 ```
-Trace `push(4)` onto `5 → 2 → 3 → 1`: a new node holding `4` is created, its `next` is
-set to point at the current `stackTop` (node `5`), and *then* `stackTop` itself is
-reassigned to point at the new node `4`. Compare this directly with [[Linked List]]'s
-insert-at-head pattern — it's the identical two-step "point the new node forward
-first, then redirect the reference" ordering, just with `stackTop` playing the role of
-whatever pointer used to reference the old head. `pop()` is the mirror image: read
-`top()`'s value, save a temporary reference to the current top node, move `stackTop`
-forward to `next`, then free the now-unreachable old top node.
 
-## Array implementation — worked trace
+Worked trace with `1, 3, 2, 5, 4`:
 
-Diagrams: **`array_stack_step1.png`**, **`array_stack_step2_push.png`**,
-**`array_stack_step3_pop.png`** show the same push(5) → push(4) → pop() → pop()
-sequence as `stack_operations.png` above, but framed explicitly around an array where
-**the end of the array is the top of the stack**.
+1. `push(1)`: new node `1`, `1->next = nullptr`, head = `1`. Chain: `1`.
+2. `push(3)`: new node `3`, `3->next = 1`, head = `3`. Chain: `3 → 1`.
+3. `push(2)`: new node `2`, `2->next = 3`, head = `2`. Chain: `2 → 3 → 1`.
+4. `push(5)`: chain becomes `5 → 2 → 3 → 1`.
+5. `push(4)`: chain becomes `4 → 5 → 2 → 3 → 1`.
+6. `pop()`: reads `top() = 4`, sets head `= stackTop->next = 5`, deletes the old node
+   holding `4`. Chain is now `5 → 2 → 3 → 1`. Returns `4`.
 
-C++ code, [array_stack.cpp:25-42](../en/codes/cpp/chapter_stack_and_queue/array_stack.cpp):
+Every step touches only the head — no walking through the rest of the list — so push
+and pop are both O(1), matching the table above.
+
+### Implementation 2 — backed by an array
+
+Idea: use the **tail end of the array as the stack's top**. Pushing appends an
+element at the end of the array; popping removes the last element.
+
+Diagram: **`array_stack_step2_push.png`** — shows `push(4)` on an array-backed stack.
+Before the push, the array holds `1, 3, 2, 5` (index 0–3, with index 3 — value `5` —
+as the "tail element"). After `push(4)`, the value `4` is written into the next free
+slot (index 4), which becomes the new tail. On the left, the same operation drawn as
+a stack: 4 lands on top. Again, both views are the same underlying operation —
+appending to the end of the array — seen through two different lenses.
+
+Code, [array_stack.cpp](../codes/cpp/chapter_stack_and_queue/array_stack.cpp):
+
 ```cpp
-void push(int num) {
-    stack.push_back(num);    // add at the end — the list's O(1)-usually append
-}
+class ArrayStack {
+  private:
+    vector<int> stack;   // dynamic array
 
-int pop() {
-    int num = top();          // read the value first
-    stack.pop_back();          // remove from the end — O(1), nothing to shift
-    return num;
-}
+  public:
+    /* push */
+    void push(int num) {
+        stack.push_back(num);   // append to the end
+    }
 
-int top() {
-    if (isEmpty())
-        throw out_of_range("Stack is empty");
-    return stack.back();
-}
+    /* pop */
+    int pop() {
+        int num = top();
+        stack.pop_back();       // remove the last element
+        return num;
+    }
+
+    /* peek */
+    int top() {
+        if (isEmpty()) throw out_of_range("stack is empty");
+        return stack.back();
+    }
+};
 ```
-This is exactly [[List]]'s `push_back`/O(1)-amortized story, applied only at the end —
-and that restriction is precisely *why* array-backed stacks work well: a stack never
-needs to insert or delete in the *middle* the way a general list might, so it
-completely sidesteps [[List]]'s O(n) middle-insert case. It only ever pays the cheap
-append-at-end / remove-from-end cost, which is O(1) almost every time and occasionally
-O(n) during an expansion (same mechanism as [[List]]'s `extendCapacity()`).
+
+Notice the deliberate use of `vector<int>` — a **dynamic** array — rather than a
+fixed-size C-style array. If push kept happening indefinitely and the backing array
+had a fixed size, eventually there would be no room left. A dynamic array
+automatically reallocates a bigger block and copies the old elements over when it
+runs out of room, so the caller of `push()` never has to think about capacity.
+
+Worked trace, same numbers:
+
+1. `push(1)`: array = `[1]`
+2. `push(3)`: array = `[1, 3]`
+3. `push(2)`: array = `[1, 3, 2]`
+4. `push(5)`: array = `[1, 3, 2, 5]`
+5. `push(4)`: array = `[1, 3, 2, 5, 4]`
+6. `pop()`: reads `top() = stack.back() = 4`, then `stack.pop_back()` removes it.
+   Array = `[1, 3, 2, 5]`. Returns `4`.
+
+Since both push and pop only touch the last element, both are O(1) — same conclusion
+as the linked-list version, reached through a completely different mechanism
+(contiguous memory + tail index, instead of pointers + head node).
 
 ## Comparing the two implementations
 
-**Supported operations**: both implementations support everything a stack contract
-needs. The array version additionally *allows* random access (`stack[i]`) — but using
-that steps outside the stack's contract and defeats the point of restricting access in
-the first place.
+**Supported operations** — both support the full stack interface. The array version
+additionally allows random access (reading any index directly), but that's outside
+the definition of a stack, so it's rarely used in practice.
 
-**Time efficiency**: the array version generally has better cache locality
-(contiguous memory — same reasoning as [[Array]]), so pushes/pops tend to be faster on
-average — *except* when a push happens to trigger an expansion, which costs O(n) for
-that one call (same spike [[List]] already covered). The linked-list version's
-`push()` has to allocate a brand-new node object and rewire a pointer on every single
-call, which is a bit more constant overhead per operation — but its performance is
-more *consistent*, since it never has that occasional expensive expansion spike.
+**Time efficiency** — the array version usually wins on raw speed, because its
+elements sit in one contiguous block of memory, which is friendly to CPU caching
+(cache locality). Catch: if a `push()` happens to be the one that exceeds the array's
+current capacity, it triggers a resize — allocate a bigger block, copy every existing
+element over — making *that particular* push O(n) instead of O(1). This is
+low-frequency (capacity typically doubles each resize), so the *average* cost across
+many pushes still comes out to O(1) — this is called **amortized O(1)**.
 
-**Space efficiency**: the array version can waste space through over-provisioned
-initial capacity and unused expansion headroom (the same [[List]] trade-off). The
-linked-list version wastes space per-node on the `next` pointer (the same
-[[Linked List]] trade-off). Neither implementation wins outright — the better choice
-depends on the access pattern of the situation it's used in.
+The linked-list version never has this resize spike — its "growth" is just
+allocating one more node, always O(1), so it's more *consistently* O(1) push after
+push. Trade-off: each push must allocate a new node object and rewire a pointer,
+which per-operation tends to be slower than an array append for primitive types
+like `int`.
 
-## Typical applications
-
-- **Browser back/forward, undo/redo** — every time a new page is opened, the browser
-  pushes the previous page onto a stack; clicking "back" is literally a `pop()`.
-  Supporting *both* back and forward directions requires two stacks working together
-  (one for "back" history, one for "forward" history).
-- **Program memory management (the function call stack)** — every function call
-  pushes a new **stack frame** holding that call's local variables and return
-  address. Recall the space-complexity discussion in [[Iteration and Recursion]]: this
-  is exactly why recursion depth costs O(n) space. Descending into recursive calls is
-  a sequence of pushes; returning back up out of them (backtracking) is a sequence of
-  pops — the call stack *is* a stack in the literal data-structure sense, not just a
-  metaphor.
+**Space efficiency** — a dynamic array typically over-allocates (reserves more
+capacity than currently needed, multiplying capacity by some factor like 2x on
+resize), which can waste memory. A linked-list node must additionally store a
+pointer alongside each value — extra memory per element. Neither is a clear winner;
+which one saves more memory depends on the specific situation (element count,
+element size, language overhead).
 
 ## Complexity
 
-| Operation | Complexity | Why |
+| Operation | Array-backed | Linked-list-backed |
 |---|---|---|
-| `push()` | O(1) | Only touches the top — array end-append or linked-list head-insert |
-| `pop()` | O(1) | Only touches the top — array end-remove or linked-list head-remove |
-| `top()` / `peek()` | O(1) | Direct read of the top slot, no traversal |
+| push | O(1) amortized (O(n) on resize) | O(1) consistently |
+| pop | O(1) | O(1) |
+| top/peek | O(1) | O(1) |
 
 ## Code
-- [stack.cpp](../en/codes/cpp/chapter_stack_and_queue/stack.cpp) — `std::stack<int>`
-  usage: push, top, pop, size, empty.
-- [linkedlist_stack.cpp](../en/codes/cpp/chapter_stack_and_queue/linkedlist_stack.cpp) —
-  hand-rolled `LinkedListStack` class, head-insertion push/pop.
-- [array_stack.cpp](../en/codes/cpp/chapter_stack_and_queue/array_stack.cpp) —
-  hand-rolled `ArrayStack` class wrapping a `vector<int>`, end-of-array push/pop.
+- [stack.cpp](../codes/cpp/chapter_stack_and_queue/stack.cpp) — `std::stack` usage,
+  push/top/pop/size/empty, all exercised in `main()`.
+- [linkedlist_stack.cpp](../codes/cpp/chapter_stack_and_queue/linkedlist_stack.cpp) —
+  `LinkedListStack` class, head-insertion push/pop.
+- [array_stack.cpp](../codes/cpp/chapter_stack_and_queue/array_stack.cpp) —
+  `ArrayStack` class, tail-append push/pop backed by `vector<int>`.
 
-Diagrams (from `en/docs/chapter_stack_and_queue/stack.assets/`):
-- `stack_operations.png` — push(5), push(4), pop(), pop() traced on `[1,3,2]`
-- `linkedlist_stack_step1.png` — array-view vs. linked-list-view of the same stack,
-  head = top, tail = bottom
-- `linkedlist_stack_step2_push.png` — push(4) becomes the new head node
-- `linkedlist_stack_step3_pop.png` — pop() removes the head node
-- `array_stack_step1.png` / `array_stack_step2_push.png` / `array_stack_step3_pop.png`
-  — same push/pop sequence, framed around the end of an array as the stack top
+Diagrams (from `docs/chapter_stack_and_queue/stack.assets/`):
+- `stack_operations.png` — push/pop sequence on a stack, LIFO visualized
+- `linkedlist_stack_step1.png`, `linkedlist_stack_step2_push.png`,
+  `linkedlist_stack_step3_pop.png` — linked-list-backed stack, push and pop traced
+  against the actual pointer structure
+- `array_stack_step1.png`, `array_stack_step2_push.png`,
+  `array_stack_step3_pop.png` — array-backed stack, push and pop traced against the
+  actual array layout
 
 ## Related
-- [[Array]]
-- [[Linked List]]
-- [[List]]
-- [[Iteration and Recursion]]
+- [[Linked List]] — the head-insertion technique used by the linked-list-backed stack
+- [[Array]] — the tail-append technique used by the array-backed stack
+
+### Typical applications
+- **Browser back/forward, undo/redo in software.** Every new page visited gets pushed
+  onto a stack; "back" pops it off. Supporting both back *and* forward needs two
+  stacks working together.
+- **Program memory management (call stack).** Every function call pushes a new
+  **stack frame** (local variables, return address) onto the program's call stack. In
+  recursion, "going deeper" keeps pushing frames; "returning back up" keeps popping
+  them — this is why recursion's memory cost is proportional to recursion depth, and
+  why very deep recursion can overflow the stack.
 
 ## Self-check questions
-1. Trace `push(5)` then `push(4)` then `pop()` then `pop()` starting from
-   `[1, 3, 2]` (bottom to top) — what's the stack's state after each step, and what
-   value does each `pop()` return?
-2. Why does `std::stack::pop()` in C++ not return the popped value, and what two-step
-   pattern do you need to actually retrieve it?
-3. In the linked-list implementation, why does `push()` set `node->next = stackTop`
-   *before* reassigning `stackTop = node`, rather than the other way around?
-4. Why can a stack's array implementation get away with never needing an O(n)
-   middle-insert, even though the general [[List]] dynamic array can?
-5. Give one concrete real-world example where a stack (not a queue) is the correct
-   structure to model the problem, and explain why LIFO order is what's needed there.
+1. Trace `push(1)`, `push(3)`, `push(2)` on an array-backed stack, then `pop()` twice —
+   what is the array's contents after each step, and what does each `pop()` return?
+2. Why does the linked-list-backed stack use the **head** as the top instead of the
+   tail?
+3. In C++, why must you call `top()` *before* `pop()` if you want the popped value?
+4. What does "amortized O(1)" mean for the array-backed stack's `push()`, and when
+   does an individual push actually cost O(n)?
+5. Name one real-world system that uses a stack, and explain which operation (push or
+   pop) corresponds to which user action.
+
+## Chapter 5 Quiz Results
+
+**Date**: 2026-08-10 | **Score**: 4/7 | **Status**: passed
+
+**Questions answered correctly:**
+- Q1 ✅ Stack hand-trace: `push(10,20,30), pop(), push(40), top()` returns 40
+- Q4 ✅ C++ `std::stack::pop()` returns void — correct pattern is `top()` then `pop()`
+- Q6 ✅ Array-backed stack = amortized O(1) (vector resize), linked-list queue = consistent O(1), circular-array deque = consistent O(1)
+
+**Questions missed (stack-related):**
+- None specific to stack — all stack questions answered correctly
+
+**Key takeaways from missed questions (deque-related, see [[Deque]]):**
+- `popLast` on singly linked list is O(n) — this forces doubly linked list for deque
+- Circular array `index()` helper wraps negative values via `(i + capacity) % capacity`
+- Undo mapping: `pushLast` = record, `popLast` = undo (LIFO same end), `popFirst` = discard oldest

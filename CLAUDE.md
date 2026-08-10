@@ -27,23 +27,26 @@ The quiz unit is a **whole Chapter** (the group of sections sharing a name in th
 Chapter column below), not an individual section.
 
 For each `pending` section in the current Chapter:
-1. Read the corresponding doc (`docs/{chapter}/{file}.md`) + C++ sample code
-   (`codes/cpp/...`).
+1. Read the corresponding doc (`en/docs/{chapter}/{file}.md`) + C++ sample code
+   (`en/codes/cpp/...`).
 2. Explain the core idea, complexity, and point to real code in the repo — never
    invent your own examples. **No quiz at this step.** Whenever a diagram/image is
    shown (via Read on a `.png`/`.assets/` file), state its file path/name right before
    or after showing it, so the user knows which image is being discussed.
 3. Write the note directly into the vault at `hello-algo/{Chapter}/{topic name}.md`
-   following the template `hello-algo/Templates/topic.md` (use the `obsidian-markdown`
+   (use the `obsidian-markdown`
    skill — correct wikilinks, frontmatter). Do not hand content to the user to paste.
 4. Mark that section as `taught` (not yet `done`), move to the next `pending` section
    in the same Chapter — don't ask, just keep teaching.
 
 Once every section in the Chapter is taught (no `pending` left in that Chapter, only
 `taught`):
-5. Generate 5-8 quiz questions covering the WHOLE chapter (theory + hand-tracing code
-   + complexity, spread across all taught sections). Grade the user's answers.
-6. If they pass: mark every `taught` section in that chapter as `done`, record the
+5. **Wait for the user to confirm they are ready** before generating the quiz.
+   Do NOT auto-generate quiz immediately after marking the last section taught.
+6. Generate 5-8 quiz questions covering the WHOLE chapter (theory + hand-tracing code
+   + complexity, spread across all taught sections) **using the `AskUserQuestion` tool**
+   (not plain text). Grade the user's answers.
+7. If they pass: mark every `taught` section in that chapter as `done`, record the
    date, move to the next Chapter.
    If they get several wrong: keep sections as `taught` (do not revert to `pending`),
    re-explain the missed parts, quiz again — do not start a new chapter.
@@ -66,9 +69,9 @@ Status per row: `pending` (not taught yet) → `taught` (explained, not quizzed)
 | 4.1 | Array & LinkedList | array.md | done | 2026-08-07 |
 | 4.2 | Array & LinkedList | linked_list.md | done | 2026-08-07 |
 | 4.3 | Array & LinkedList | list.md | done | 2026-08-07 |
-| 5.1 | Stack & Queue | stack.md | pending | |
-| 5.2 | Stack & Queue | queue.md | pending | |
-| 5.3 | Stack & Queue | deque.md | pending | |
+| 5.1 | Stack & Queue | stack.md | done | 2026-08-10 |
+| 5.2 | Stack & Queue | queue.md | done | 2026-08-10 |
+| 5.3 | Stack & Queue | deque.md | done | 2026-08-10 |
 | 6.1 | Hashing | hash_map.md | pending | |
 | 6.2 | Hashing | hash_collision.md | pending | |
 | 6.3 | Hashing | hash_algorithm.md | pending | |
